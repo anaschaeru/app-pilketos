@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Candidate;
 use App\Models\User;
 use App\Models\Vote;
+use App\Models\Setting;
+use App\Models\Candidate;
 use Illuminate\Http\Request;
 
 class AdminDashboardController extends Controller
 {
   public function index()
   {
+    $setting = Setting::first();
+    $isVotingActive = $setting ? $setting->voting_active : false;
     // 1. Ambil Total Siswa (DPT)
     $totalSiswa = User::where('role', 'siswa')->count();
 
@@ -35,7 +38,21 @@ class AdminDashboardController extends Controller
       'partisipasi',
       'candidates',
       'chartLabels',
-      'chartData'
+      'chartData',
+      'isVotingActive'
     ));
+  }
+
+  public function toggleVoting()
+  {
+    $setting = Setting::first();
+
+    // Balik statusnya (Jika true jadi false, jika false jadi true)
+    $setting->update([
+      'voting_active' => !$setting->voting_active
+    ]);
+
+    $status = $setting->voting_active ? 'DIBUKA (ON)' : 'DITUTUP (OFF)';
+    return back()->with('success', 'Status Voting berhasil diubah menjadi: ' . $status);
   }
 }

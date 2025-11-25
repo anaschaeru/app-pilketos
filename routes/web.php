@@ -37,7 +37,9 @@ Route::middleware('auth')->group(function () {
   Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
   // --- Proses Voting ---
-  Route::post('/vote/{candidate}', [VoteController::class, 'store'])->name('vote.store');
+  Route::post('/vote/{candidate}', [VoteController::class, 'store'])
+    ->name('vote.store')
+    ->middleware('voting.open');
 
   // Redirect aman jika siswa akses link vote via GET (URL Bar)
   Route::get('/vote/{candidate}', function () {
@@ -69,5 +71,7 @@ Route::middleware('auth')->group(function () {
 
       // 3. CRUD Standar (Resource ditaruh paling bawah di blok user)
       Route::resource('users', UserController::class);
+
+      Route::post('/toggle-voting', [AdminDashboardController::class, 'toggleVoting'])->name('voting.toggle');
     });
 });

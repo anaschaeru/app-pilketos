@@ -8,14 +8,32 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
+
 class UserController extends Controller
 {
   // TAMPILKAN DAFTAR USER
-  public function index()
+  public function index(Request $request)
   {
-    // Kita ambil user yang role-nya 'siswa' saja, urutkan terbaru
-    // Menggunakan paginate(10) agar halaman tidak berat jika siswanya ribuan
-    $users = User::where('role', 'siswa')->latest()->paginate(10);
+    // 1. Mulai Query dasar (Hanya ambil yang role-nya siswa)
+    $query = User::where('role', 'siswa');
+
+    // 2. Cek apakah ada input pencarian?
+    if ($request->has('search') && $request->search != null) {
+      $search = $request->search;
+
+      // 3. Tambahkan logika pencarian (Grouping Where)
+      // Kita gunakan where(function...) agar logika 'OR' tidak menimpa 'role=siswa'
+      $query->where(function ($q) use ($search) {
+        $q->where('name', 'LIKE', '%' . $search . '%')
+          ->orWhere('nisn', 'LIKE', '%' . $search . '%')
+          ->orWhere('kelas', 'LIKE', '%' . $search . '%');
+      });
+    }
+
+    // 4. Eksekusi Query dengan Pagination
+    // withQueryString() penting agar saat pindah halaman (page 2), kata kunci cari tidak hilang
+    $users = $query->latest()->paginate(10)->withQueryString();
+
     return view('admin.users.index', compact('users'));
   }
 

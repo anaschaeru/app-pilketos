@@ -6,29 +6,58 @@
   <div class="container mx-auto px-4 py-8">
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-      <div class="text-center md:text-left">
+
+      <div class="text-center md:text-left w-full md:w-auto">
         <h2 class="text-3xl font-bold text-gray-800">Data Pemilih</h2>
         <p class="text-gray-500 text-sm mt-1">Total: {{ $users->total() }} Siswa</p>
       </div>
 
-      <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-        <button onclick="document.getElementById('importModal').classList.remove('hidden')"
-          class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-95">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-            </path>
-          </svg>
-          Import Excel
-        </button>
+      <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
 
-        <a href="{{ route('admin.users.create') }}"
-          class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-95">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          Tambah Manual
-        </a>
+        <form action="{{ route('admin.users.index') }}" method="GET" class="w-full md:w-72">
+          <div class="relative">
+            <input type="text" name="search" value="{{ request('search') }}"
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
+              placeholder="Cari Nama / NISN / Kelas...">
+
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+
+            @if (request('search'))
+              <a href="{{ route('admin.users.index') }}"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </a>
+            @endif
+          </div>
+        </form>
+
+        <div class="flex w-full md:w-auto gap-2">
+          <button onclick="document.getElementById('importModal').classList.remove('hidden')"
+            class="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+              </path>
+            </svg>
+            <span class="hidden lg:inline">Import</span>
+          </button>
+
+          <a href="{{ route('admin.users.create') }}"
+            class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow flex items-center justify-center gap-2 transition active:scale-95 whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span class="hidden lg:inline">Tambah</span>
+          </a>
+        </div>
+
       </div>
     </div>
 
@@ -131,7 +160,8 @@
                     <span
                       class="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold text-green-700 bg-green-100 rounded-full">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                        </path>
                       </svg>
                       Sudah
                     </span>

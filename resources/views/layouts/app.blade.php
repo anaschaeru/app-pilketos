@@ -8,6 +8,8 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <script src="//unpkg.com/alpinejs" defer></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
@@ -31,13 +33,19 @@
     .prose p {
       margin-bottom: 0.5rem;
     }
+
+    /* Animasi Fade In untuk Mobile Menu */
+    [x-cloak] {
+      display: none !important;
+    }
   </style>
 </head>
 
 <body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
-  <nav
+  <nav x-data="{ isOpen: false }"
     class="sticky top-0 z-50 bg-blue-900/95 backdrop-blur-md border-b border-blue-700/50 shadow-xl transition-all duration-300">
+
     <div class="container mx-auto px-6 py-3">
       <div class="flex justify-between items-center">
 
@@ -52,40 +60,37 @@
           <div class="flex flex-col">
             <span
               class="text-lg font-bold text-white tracking-tight leading-none group-hover:text-blue-200 transition-colors">E-VOTING</span>
-            <span class="text-[10px] font-medium text-blue-300 tracking-[0.2em] uppercase">SMKN 4
-              Tangerang</span>
+            <span class="text-[10px] font-medium text-blue-300 tracking-[0.2em] uppercase">SMKN 4 Tangerang</span>
           </div>
         </a>
 
-        <div class="flex items-center gap-4">
+        <div class="hidden md:flex items-center gap-6">
           @auth
             @if (Auth::user()->role === 'admin')
               <a href="{{ route('admin.dashboard') }}"
-                class="{{ request()->routeIs('admin.dashboard') ? 'text-white font-bold' : 'text-blue-200' }} hover:text-white text-sm font-medium transition-colors hidden md:block">
+                class="{{ request()->routeIs('admin.dashboard') ? 'text-white font-bold' : 'text-blue-200' }} hover:text-white text-sm font-medium transition-colors">
                 Hitung Cepat
               </a>
               <a href="{{ route('admin.candidates.index') }}"
-                class="text-blue-200 hover:text-white text-sm font-medium transition-colors hidden md:block">
+                class="{{ request()->routeIs('admin.candidates.*') ? 'text-white font-bold' : 'text-blue-200' }} hover:text-white text-sm font-medium transition-colors">
                 Kelola Kandidat
               </a>
               <a href="{{ route('admin.users.index') }}"
-                class="text-blue-200 hover:text-white text-sm font-medium transition-colors hidden md:block">
+                class="{{ request()->routeIs('admin.users.*') ? 'text-white font-bold' : 'text-blue-200' }} hover:text-white text-sm font-medium transition-colors">
                 Data Pemilih
               </a>
             @endif
-            <div
-              class="hidden md:flex items-center gap-3 bg-blue-800/50 py-1.5 px-4 rounded-full border border-blue-700/50">
+
+            <div class="flex items-center gap-3 bg-blue-800/50 py-1.5 px-4 rounded-full border border-blue-700/50">
               <div
                 class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-inner">
                 {{ substr(Auth::user()->name, 0, 1) }}
               </div>
               <div class="text-sm">
                 <p class="text-gray-100 font-semibold leading-none">{{ Auth::user()->name }}</p>
-                <p class="text-blue-300 text-[10px] uppercase tracking-wide mt-0.5">{{ Auth::user()->role }}
-                </p>
+                <p class="text-blue-300 text-[10px] uppercase tracking-wide mt-0.5">{{ Auth::user()->role }}</p>
               </div>
             </div>
-
 
             <form action="{{ route('logout') }}" method="POST" class="inline">
               @csrf
@@ -117,6 +122,76 @@
             </a>
           @endguest
         </div>
+
+        <div class="md:hidden flex items-center">
+          <button @click="isOpen = !isOpen" class="text-white focus:outline-none">
+            <svg x-show="!isOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+            </svg>
+            <svg x-show="isOpen" class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div x-show="isOpen" x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+      x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0"
+      x-transition:leave-end="opacity-0 -translate-y-2"
+      class="md:hidden bg-blue-800 border-t border-blue-700 shadow-inner" x-cloak>
+
+      <div class="px-6 py-4 space-y-4">
+        @auth
+          <div class="flex items-center gap-3 pb-4 border-b border-blue-700">
+            <div
+              class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold shadow-inner">
+              {{ substr(Auth::user()->name, 0, 1) }}
+            </div>
+            <div>
+              <p class="text-white font-semibold">{{ Auth::user()->name }}</p>
+              <p class="text-blue-300 text-xs uppercase">{{ Auth::user()->role }}</p>
+            </div>
+          </div>
+
+          @if (Auth::user()->role === 'admin')
+            <div class="space-y-2">
+              <a href="{{ route('admin.dashboard') }}"
+                class="block text-blue-200 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition {{ request()->routeIs('admin.dashboard') ? 'bg-blue-700 text-white font-bold' : '' }}">
+                Hitung Cepat
+              </a>
+              <a href="{{ route('admin.candidates.index') }}"
+                class="block text-blue-200 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition {{ request()->routeIs('admin.candidates.*') ? 'bg-blue-700 text-white font-bold' : '' }}">
+                Kelola Kandidat
+              </a>
+              <a href="{{ route('admin.users.index') }}"
+                class="block text-blue-200 hover:text-white hover:bg-blue-700 px-3 py-2 rounded-lg transition {{ request()->routeIs('admin.users.*') ? 'bg-blue-700 text-white font-bold' : '' }}">
+                Data Pemilih
+              </a>
+            </div>
+          @endif
+
+          <form action="{{ route('logout') }}" method="POST">
+            @csrf
+            <button type="submit"
+              class="w-full flex items-center justify-center gap-2 mt-4 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg transition font-medium">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
+              Logout
+            </button>
+          </form>
+        @endauth
+
+        @guest
+          <a href="{{ route('login') }}"
+            class="block w-full text-center bg-white text-blue-900 font-bold py-2 rounded-lg hover:bg-gray-100 transition">
+            Login
+          </a>
+        @endguest
       </div>
     </div>
   </nav>
@@ -132,7 +207,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    // Notifikasi Sukses (Hijau)
+    // Notifikasi Sukses
     @if (session('success'))
       Swal.fire({
         icon: 'success',
@@ -140,12 +215,11 @@
         text: "{{ session('success') }}",
         timer: 3000,
         showConfirmButton: false,
-        // background: '#f0fdf4', // Hijau muda
         color: '#000000',
       });
     @endif
 
-    // Notifikasi Error (Merah)
+    // Notifikasi Error
     @if (session('error'))
       Swal.fire({
         icon: 'error',

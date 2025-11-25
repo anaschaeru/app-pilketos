@@ -52,7 +52,7 @@
       <div x-data="{ activeTab: 'visi' }"
         class="group relative bg-white rounded-2xl shadow hover:shadow-xl transition-all duration-300 border border-gray-200 overflow-hidden flex flex-col {{ Auth::user()->has_voted ? 'opacity-60 grayscale' : '' }}">
 
-        <div class="relative h-56 overflow-hidden bg-gray-100">
+        <div class="relative h-100 overflow-hidden bg-gray-100">
           @if ($candidate->foto)
             <img src="{{ asset('storage/' . $candidate->foto) }}" alt="{{ $candidate->nama_paslon }}"
               class="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105">

@@ -4,10 +4,11 @@ namespace App\Imports;
 
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Maatwebsite\Excel\Concerns\ToCollection; // Ganti ToModel jadi ToCollection
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\ToCollection; // Ganti ToModel jadi ToCollection
 
 class UsersImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
@@ -16,55 +17,63 @@ class UsersImport implements ToCollection, WithHeadingRow, WithChunkReading
    */
   public function collection(Collection $rows)
   {
+    // 1. Matikan pencatatan query agar memori hemat
+    DB::disableQueryLog();
+
     $newUsers = [];
-    $timestamp = now(); // Ambil waktu sekarang untuk created_at & updated_at
+    $timestamp = now();
 
-    // 1. Ambil semua NISN dari file Excel ini ke dalam array
+    // 2. Ambil list NISN dari excel untuk cek duplikat di RAM
     $excelNisns = $rows->pluck('nisn')->toArray();
+    $existingNisns = User::whereIn('nisn', $excelNisns)->pluck('nisn')->toArray();
 
-    // 2. Ambil semua NISN yang SUDAH ADA di database (sekali query saja)
-    // Tujuannya agar kita tidak perlu cek ke DB berulang-ulang di dalam loop
-    $existingNisns = User::whereIn('nisn', $excelNisns)
-      ->pluck('nisn')
-      ->toArray();
-
-    // 3. Looping data di memori (PHP) - Jauh lebih cepat dari Query DB
     foreach ($rows as $row) {
-
-      // Skip jika nama/nisn kosong
+      // Validasi data kosong
       if (!isset($row['nama']) || !isset($row['nisn'])) continue;
 
-      // Skip jika NISN sudah ada di database (Cek via array, bukan query)
+      // Cek duplikat
       if (in_array($row['nisn'], $existingNisns)) continue;
 
-      // Masukkan ke antrian array insert
       $newUsers[] = [
-        'name'      => $row['nama'],
-        'nisn'      => $row['nisn'],
-        'kelas'     => $row['kelas'] ?? null,
-        'role'      => 'siswa',
-        'password'  => Hash::make($row['nisn']), // Hashing memang agak berat di CPU
-        'has_voted' => 0, // False di database biasanya 0
-        'created_at' => $timestamp, // Insert manual butuh timestamp manual
+        'name'       => $row['nama'],
+        'nisn'       => $row['nisn'],
+        'kelas'      => $row['kelas'] ?? null,
+        'role'       => 'siswa',
+        'password'   => Hash::make($row['nisn']), // Ini proses berat!
+        'has_voted'  => 0,
+        'created_at' => $timestamp,
         'updated_at' => $timestamp,
       ];
     }
 
-    // 4. Lakukan BULK INSERT (Simpan sekaligus)
-    // Kita pecah per 500 data agar query tidak kepanjangan (SQL Error)
-    $chunks = array_chunk($newUsers, 50);
+    // 3. LOGIKA PENYELAMAT:
+    // Pecah lagi jadi sangat kecil (20 baris per kirim)
+    // Agar paket data ringan
+    $chunks = array_chunk($newUsers, 20);
 
     foreach ($chunks as $chunk) {
-      User::insert($chunk);
+      try {
+        // PAKSA SAMBUNG ULANG KE DATABASE
+        // Ini akan membangunkan MySQL yang "tertidur" saat proses hashing tadi
+        DB::reconnect();
+
+        User::insert($chunk);
+      } catch (\Exception $e) {
+        // Jika masih gagal, coba sekali lagi (Retry logic)
+        DB::reconnect();
+        User::insert($chunk);
+      }
     }
   }
 
   /**
-   * Membaca file Excel sedikit demi sedikit agar RAM tidak jebol
-   * Jika datamu > 5000, ini wajib.
+   * BACA SEDIKIT DEMI SEDIKIT
+   * Kita turunkan jadi 100 baris.
+   * Artinya: Baca 100 Excel -> Hash -> Simpan -> Ulangi.
+   * Ini mencegah MySQL menunggu terlalu lama.
    */
   public function chunkSize(): int
   {
-    return 200; // Baca per 1000 baris excel
+    return 100;
   }
 }

@@ -52,7 +52,7 @@ class UsersImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     // 4. Lakukan BULK INSERT (Simpan sekaligus)
     // Kita pecah per 500 data agar query tidak kepanjangan (SQL Error)
-    $chunks = array_chunk($newUsers, 500);
+    $chunks = array_chunk($newUsers, 50);
 
     foreach ($chunks as $chunk) {
       User::insert($chunk);
@@ -65,6 +65,6 @@ class UsersImport implements ToCollection, WithHeadingRow, WithChunkReading
    */
   public function chunkSize(): int
   {
-    return 1000; // Baca per 1000 baris excel
+    return 200; // Baca per 1000 baris excel
   }
 }

@@ -21,13 +21,12 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-
-                <form action="{{ route('admin.voting.toggle') }}" method="POST" class="w-full sm:w-auto">
+                <form id="toggle-voting-form" action="{{ route('admin.voting.toggle') }}" method="POST"
+                    class="w-full sm:w-auto">
                     @csrf
-                    <button type="submit"
+                    <button type="button" onclick="confirmToggleVoting({{ $isVotingActive ? 'true' : 'false' }})"
                         class="w-full sm:w-auto flex items-center justify-center gap-3 px-5 py-3 rounded-xl border transition-all shadow-sm
-                        {{ $isVotingActive ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' }}"
-                        onclick="return confirm('Apakah Anda yakin ingin mengubah status voting?')">
+        {{ $isVotingActive ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100' }}">
 
                         <span class="relative flex h-3 w-3">
                             <span
@@ -242,5 +241,33 @@
             minute: '2-digit',
             second: '2-digit'
         });
+    </script>
+    <script>
+        function confirmToggleVoting(isActive) {
+            // Tentukan pesan dan warna berdasarkan status saat ini
+            let action = isActive ? 'MENUTUP' : 'MEMBUKA';
+            let textMessage = isActive ?
+                "Siswa tidak akan bisa memilih lagi jika voting ditutup." :
+                "Siswa akan dapat segera melakukan pemilihan.";
+            let confirmColor = isActive ? '#d33' : '#10b981'; // Merah jika mau tutup, Hijau jika mau buka
+            let iconType = isActive ? 'warning' : 'question';
+
+            Swal.fire({
+                title: 'Yakin ingin ' + action + ' Voting?',
+                text: textMessage,
+                icon: iconType,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Lakukan!',
+                cancelButtonText: 'Batal',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit form secara manual jika user klik YA
+                    document.getElementById('toggle-voting-form').submit();
+                }
+            })
+        }
     </script>
 @endpush

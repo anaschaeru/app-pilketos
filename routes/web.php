@@ -24,6 +24,7 @@ Route::post('/login', [LoginController::class, 'authenticate'])->name('login.aut
 
 Route::get('/foo', function () {
   Artisan::call('storage:link');
+  return 'Symlink Berhasil Dibuat!';
 });
 
 

@@ -91,7 +91,7 @@
                             </div>
                             <div class="text-sm">
                                 <p class="text-gray-100 font-semibold leading-none">{{ Auth::user()->name }}</p>
-                                <p class="text-blue-300 text-[10px] uppercase tracking-wide mt-0.5">{{ Auth::user()->role }}
+                                {{-- <p class="text-blue-300 text-[10px] uppercase tracking-wide mt-0.5">{{ Auth::user()->role }} --}}
                                 </p>
                             </div>
                         </div>

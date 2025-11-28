@@ -10,27 +10,36 @@ use Illuminate\Http\Request;
 
 class AdminDashboardController extends Controller
 {
+  /**
+   * Tampilkan Dashboard Admin & Quick Count
+   */
   public function index()
   {
-    $setting = Setting::first();
-    $isVotingActive = $setting ? $setting->voting_active : false;
-    // 1. Ambil Total Siswa (DPT)
+    // 1. Ambil Status Voting (Lebih Efisien)
+    // Menggunakan value() mengambil langsung nilai kolom, bukan object model.
+    // '?? false' memastikan jika tabel kosong, dianggap voting mati.
+    $isVotingActive = Setting::value('voting_active') ?? false;
+
+    // 2. Ambil Total Siswa (DPT)
     $totalSiswa = User::where('role', 'siswa')->count();
 
-    // 2. Ambil Total Suara Masuk
+    // 3. Ambil Total Suara Masuk
     $totalSuara = Vote::count();
 
-    // 3. Hitung Persentase Partisipasi
-    // Gunakan logika if untuk mencegah error "Division by Zero" jika belum ada data
-    $partisipasi = $totalSiswa > 0 ? round(($totalSuara / $totalSiswa) * 100) : 0;
+    // 4. Hitung Persentase Partisipasi (Cegah Division by Zero)
+    $partisipasi = $totalSiswa > 0
+      ? round(($totalSuara / $totalSiswa) * 100)
+      : 0;
 
-    // 4. Ambil Data Kandidat beserta Jumlah Suaranya
-    // withCount('votes') adalah fitur ajaib Laravel untuk menghitung relasi otomatis
-    $candidates = Candidate::withCount('votes')->orderBy('nomor_urut', 'asc')->get();
+    // 5. Ambil Data Kandidat & Suara
+    $candidates = Candidate::withCount('votes')
+      ->orderBy('nomor_urut', 'asc')
+      ->get();
 
-    // 5. Siapkan data untuk Chart.js (Array Nama & Array Suara)
+    // 6. Siapkan Data Chart
+    // pluck() otomatis membuat Collection, kita bisa langsung kirim ke view
     $chartLabels = $candidates->pluck('nama_paslon');
-    $chartData = $candidates->pluck('votes_count');
+    $chartData   = $candidates->pluck('votes_count');
 
     return view('admin.dashboard.index', compact(
       'totalSiswa',
@@ -43,16 +52,26 @@ class AdminDashboardController extends Controller
     ));
   }
 
+  /**
+   * Mengubah Status Voting (ON/OFF)
+   */
   public function toggleVoting()
   {
-    $setting = Setting::first();
+    // PERBAIKAN PENTING: Gunakan firstOrCreate
+    // Ini mencegah error jika tabel 'settings' masih kosong.
+    // Jika kosong, dia akan membuat baris baru dengan default 'voting_active' => false
+    $setting = Setting::firstOrCreate(
+      [], // Kondisi pencarian (kosong = ambil baris pertama apapun)
+      ['voting_active' => false] // Nilai default jika baru dibuat
+    );
 
-    // Balik statusnya (Jika true jadi false, jika false jadi true)
+    // Update status (toggle true/false)
     $setting->update([
       'voting_active' => !$setting->voting_active
     ]);
 
     $status = $setting->voting_active ? 'DIBUKA (ON)' : 'DITUTUP (OFF)';
+
     return back()->with('success', 'Status Voting berhasil diubah menjadi: ' . $status);
   }
 }

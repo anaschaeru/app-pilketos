@@ -3,26 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Vote; // Import Model Vote
 use App\Imports\UsersImport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // Untuk Transaction
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log; // Untuk mencatat error
 use Maatwebsite\Excel\Facades\Excel;
-
 
 class UserController extends Controller
 {
-  // TAMPILKAN DAFTAR USER
+  /**
+   * TAMPILKAN DAFTAR USER
+   */
   public function index(Request $request)
   {
-    // 1. Mulai Query dasar (Hanya ambil yang role-nya siswa)
     $query = User::where('role', 'siswa');
 
-    // 2. Cek apakah ada input pencarian?
-    if ($request->has('search') && $request->search != null) {
+    // Pencarian Cerdas
+    if ($request->filled('search')) {
       $search = $request->search;
-
-      // 3. Tambahkan logika pencarian (Grouping Where)
-      // Kita gunakan where(function...) agar logika 'OR' tidak menimpa 'role=siswa'
       $query->where(function ($q) use ($search) {
         $q->where('name', 'LIKE', '%' . $search . '%')
           ->orWhere('nisn', 'LIKE', '%' . $search . '%')
@@ -30,113 +30,150 @@ class UserController extends Controller
       });
     }
 
-    // 4. Eksekusi Query dengan Pagination
-    // withQueryString() penting agar saat pindah halaman (page 2), kata kunci cari tidak hilang
+    // withQueryString() agar filter pencarian tidak hilang saat pindah halaman
     $users = $query->latest()->paginate(10)->withQueryString();
 
     return view('admin.users.index', compact('users'));
   }
 
-  // FORM TAMBAH USER
+  /**
+   * FORM TAMBAH USER
+   */
   public function create()
   {
     return view('admin.users.create');
   }
 
-  // SIMPAN USER BARU
+  /**
+   * SIMPAN USER BARU
+   */
   public function store(Request $request)
   {
     $request->validate([
-      'name' => 'required|string|max:255',
-      'nisn' => 'required|numeric|unique:users,nisn',
-      'kelas' => 'required|string',
+      'name'     => 'required|string|max:255',
+      'nisn'     => 'required|numeric|unique:users,nisn',
+      'kelas'    => 'required|string',
       'password' => 'required|min:6',
     ]);
 
     User::create([
-      'name' => $request->name,
-      'nisn' => $request->nisn,
-      'kelas' => $request->kelas,
-      'password' => Hash::make($request->password),
-      'role' => 'siswa', // Default role siswa
+      'name'      => $request->name,
+      'nisn'      => $request->nisn,
+      'kelas'     => $request->kelas,
+      'password'  => Hash::make($request->password),
+      'role'      => 'siswa',
       'has_voted' => false,
     ]);
 
-    return redirect()->route('admin.users.index')->with('success', 'Siswa berhasil ditambahkan!');
+    return redirect()->route('admin.users.index')
+      ->with('success', 'Siswa berhasil ditambahkan!');
   }
 
-  // FORM EDIT USER
+  /**
+   * FORM EDIT USER
+   */
   public function edit(User $user)
   {
     return view('admin.users.edit', compact('user'));
   }
 
-  // UPDATE USER
+  /**
+   * UPDATE USER
+   */
   public function update(Request $request, User $user)
   {
     $request->validate([
-      'name' => 'required|string|max:255',
-      'nisn' => 'required|numeric|unique:users,nisn,' . $user->id,
-      'kelas' => 'required|string',
-      'password' => 'nullable|min:6', // Password boleh kosong jika tidak ingin diganti
+      'name'     => 'required|string|max:255',
+      'nisn'     => 'required|numeric|unique:users,nisn,' . $user->id,
+      'kelas'    => 'required|string',
+      'password' => 'nullable|min:6',
     ]);
 
     $data = [
-      'name' => $request->name,
-      'nisn' => $request->nisn,
+      'name'  => $request->name,
+      'nisn'  => $request->nisn,
       'kelas' => $request->kelas,
     ];
 
-    // Cek apakah admin mengisi password baru?
+    // Hanya update password jika diisi
     if ($request->filled('password')) {
       $data['password'] = Hash::make($request->password);
     }
 
     $user->update($data);
 
-    return redirect()->route('admin.users.index')->with('success', 'Data siswa berhasil diperbarui!');
+    return redirect()->route('admin.users.index')
+      ->with('success', 'Data siswa berhasil diperbarui!');
   }
 
-  // HAPUS USER
+  /**
+   * HAPUS USER (Dengan Transaction)
+   */
   public function destroy(User $user)
   {
-    $user->delete();
-    return redirect()->route('admin.users.index')->with('success', 'Data siswa dihapus!');
+    // Gunakan Transaction agar jika user dihapus, data vote-nya juga bersih
+    DB::transaction(function () use ($user) {
+      // Hapus data vote terkait (jika ada) untuk mencegah data sampah
+      Vote::where('user_id', $user->id)->delete();
+
+      // Hapus usernya
+      $user->delete();
+    });
+
+    return redirect()->route('admin.users.index')
+      ->with('success', 'Data siswa berhasil dihapus!');
   }
 
-  // FITUR RESET STATUS MEMILIH (Opsional, berguna jika ada kesalahan teknis)
+  /**
+   * RESET STATUS MEMILIH
+   */
   public function resetVote(User $user)
   {
-    $user->update(['has_voted' => false]);
-    // Hapus juga data di tabel votes (butuh import model Vote)
-    \App\Models\Vote::where('user_id', $user->id)->delete();
+    // Gunakan Transaction untuk konsistensi data
+    DB::transaction(function () use ($user) {
+      // 1. Reset status di tabel user
+      $user->update(['has_voted' => false]);
+
+      // 2. Hapus data di tabel votes
+      Vote::where('user_id', $user->id)->delete();
+    });
 
     return back()->with('success', 'Status memilih siswa berhasil di-reset!');
   }
 
-  // FUNGSI IMPORT EXCEL
+  /**
+   * IMPORT EXCEL
+   */
   public function import(Request $request)
   {
-    // 0. OPTIMASI PHP: Naikkan batas waktu & memori sementara
-    // Ini wajib untuk data > 2000 baris agar tidak error "Time Limit Exceeded"
-    ini_set('max_execution_time', 300); // Set batas waktu jadi 300 detik (5 menit)
-    ini_set('memory_limit', '-1');      // Gunakan memori seperlunya (unlimited)
+    // Optimasi PHP untuk proses berat
+    ini_set('max_execution_time', 300);
+    ini_set('memory_limit', '-1');
 
-    // 1. Validasi file harus Excel
     $request->validate([
       'file' => 'required|mimes:xlsx,xls,csv'
     ]);
 
     try {
-      // 2. Proses Import
-      // Pastikan UsersImport kamu sudah menggunakan 'ToCollection' dan 'User::insert'
-      // seperti yang kita bahas sebelumnya agar insert-nya ngebut.
+      // Proses Import
       Excel::import(new UsersImport, $request->file('file'));
 
-      return redirect()->route('admin.users.index')->with('success', 'Data siswa berhasil diimpor dari Excel!');
+      return redirect()->route('admin.users.index')
+        ->with('success', 'Data siswa berhasil diimpor!');
+    } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+      // Tangkap error validasi spesifik dari Excel
+      $failures = $e->failures();
+      $messages = "";
+      foreach ($failures as $failure) {
+        $messages .= "Baris " . $failure->row() . ": " . implode(', ', $failure->errors()) . ". ";
+      }
+      return back()->with('error', 'Gagal validasi Excel: ' . $messages);
     } catch (\Exception $e) {
-      // Jika gagal (misal format salah atau NISN duplikat)
-      return redirect()->back()->with('error', 'Gagal impor: ' . $e->getMessage());
+      // Log error asli ke file (storage/logs/laravel.log) untuk developer
+      Log::error('Import Error: ' . $e->getMessage());
+
+      // Tampilkan pesan umum + sedikit detail ke user
+      return back()->with('error', 'Terjadi kesalahan saat impor. Pastikan format file benar. Error: ' . $e->getMessage());
     }
   }
 }
